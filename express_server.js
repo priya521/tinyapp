@@ -87,10 +87,7 @@ app.post("/login", (req, res) => {
   res.send("Invalid username or password.");
 });
 
-app.post("/logout", (req, res) => {
-  req.session = null;
-  res.redirect('urls');
-});
+
 
 app.post("/register", (req, res) => {
   const { email, password } = req.body;
@@ -109,13 +106,20 @@ app.post("/register", (req, res) => {
     req.session.username = email;
     res.redirect(`urls`);
   }
-})
+});
 app.get("/urls", (req, res) => {
-  const templateVars = {
-    urls: userURLs(req.session.userId),
-    user: users[req.session.userId]
-  };
-  res.render("urls_index", templateVars);
+  const cookie = req.session.userID
+  if (cookie) {
+    const templateVars = {
+      urls: userURLs(cookie),
+      username: req.session["username"],
+      user: users[req.session["userID"]]
+    };
+    console.log(templateVars);
+    res.render("urls_index", templateVars);
+  } else {
+    res.redirect("/login");
+  }
 });
 
 app.get("/urls/new", (req, res) => {
@@ -133,46 +137,54 @@ app.get("/urls/new", (req, res) => {
 });
 app.get("/register", (req, res) => {
   const templateVars = {
-    user: users[req.session.userId]
-  };
+    username: null,
+    user: null
+  }
   res.render("urls_register", templateVars);
 });
 
+
 app.get("/login", (req, res) => {
   const templateVars = {
-    user: users[req.session.userId]
-  };
+    username: null,
+    user: null
+  }
   res.render("urls_login", templateVars);
-});
+})
 
 app.get("/urls/:shortURL", (req, res) => {
-  if (urlDatabase[req.params.shortURL]) {
-    const templateVars = {
-      shortURL: req.params.shortURL,
-      longURL: urlDatabase[req.params.shortURL].longURL,
-      user: users[req.session.userId],
-      wrongUser: function() {
-        let output = false;
-        if (!userURLs(req.session.userId)[req.params.shortURL]) {
-          output = true;
-        }
-        return output;
-      }
-    };
-    res.render("urls_show", templateVars);
-  } else {
-    res.status(404).send(`Error 404 - ${req.params.shortURL} not found.`);
+  const userID = req.session["userID"];
+  if (!userID) {
+    res.redirect('/login');
+    return;
   }
-
+  const templateVars = {
+    shortURL: req.params.shortURL,
+    longURL: urlDatabase[req.params.shortURL].longURL,
+    user: users[req.session["userID"]]
+  };
+  res.render("urls_show", templateVars);
 });
+
 
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL].longURL;
-  res.redirect(longURL);
+  console.log("urldatabase", urlDatabase[req.params.shortURL])
+  const longURL = urlDatabase[req.params.shortURL]["longURL"]
+  console.log("longURL", longURL);
+  if (longURL) {
+    res.redirect(longURL);
+  } else {
+    res.redirect('https://http.cat/404');
+  }
 });
 
+
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  const templateVars = {
+    username: null,
+    user: null
+  }
+  res.render("urls_registration", templateVars);
 });
 
 app.get("/urls.json", (req, res) => {
@@ -184,27 +196,39 @@ app.get("/hello", (req, res) => {
 });
 
 app.post("/urls", (req, res) => {
-  console.log(req.body); // Log the POST request body to the console
-  let newShort = generateRandomString();
-  urlDatabase[newShort] = {
-    longURL: httpify(req.body.longURL),
-    userID: req.session.userId
-  };
-  res.redirect(`/urls/${newShort}`);
+  const shortURL = generateRandomString();
+  const userID = req.session["userID"];
+  if (!users[userID]) {
+    res.status(403).send('403 Forbidden')
+    return;
+  }
+  urlDatabase[shortURL] = { longURL: req.body.longURL, userID, };
+  console.log('the urlDatabase has been updated to now be: \n', urlDatabase);
+  res.redirect(`/urls/${shortURL}`);
 });
 
 app.post("/urls/:id", (req, res) => {
-  if (req.session.userId === urlDatabase[req.params.id].userID) {
-    urlDatabase[req.params.id] = httpify(req.body.longURL);
+  const userID = req.session["userID"];
+  if (userID === urlDatabase[req.params.id].userID) {
+    urlDatabase[req.params.id] = { longURL: req.body.longURL, userID, };
   }
-  res.redirect(`/urls/${req.params.id}`);
+  console.log('the urlDatabase has been updated to now be: \n', urlDatabase);
+  res.redirect(`/urls`);       
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
-  if (req.session.userId === urlDatabase[req.params.shortURL].userID) {
+  const userID = req.session["userID"];
+  if (userID === urlDatabase[req.params.shortURL].userID) {
     delete urlDatabase[req.params.shortURL];
   }
-  res.redirect('/urls');
+  res.redirect(`/urls`);
+});
+
+
+app.post("/logout", (req, res) => {
+  const username = req.body.username;
+  req.session = null;
+  res.redirect("/login");
 });
 
 app.listen(PORT, () => {
