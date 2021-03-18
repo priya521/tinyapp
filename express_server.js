@@ -226,7 +226,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 
 
 app.post("/logout", (req, res) => {
-  const username = req.body.username;
+ // const username = req.body.username;
   req.session = null;
   res.redirect("/login");
 });
