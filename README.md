@@ -4,10 +4,12 @@ TinyApp is a full stack web application built with Node and Express that allows 
 
 ## Final Productx-special/nautilus-clipboard
 
-x-special/nautilus-clipboard
-copy
-file:///home/priyanka/Tinyapp%20Register.png
 
+!["Screenshot of register page" ](https://github.com/priya521/tinyapp/blob/master/docs/Tinyapp%20Register.png)
+
+!["Screenshot of Urls" ](https://github.com/priya521/tinyapp/blob/master/docs/Screenshot%20Urls.png)
+
+!["Screenshot of updateurl" ](https://github.com/priya521/tinyapp/blob/master/docs/Screenshot%20UpdateUrl.png)
 
 
 
