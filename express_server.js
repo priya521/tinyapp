@@ -17,59 +17,144 @@ app.set("view engine", "ejs");
 
 
 //sample url database
-const urlDatabase = {
-  "b2xVn2": { longURL: "http://www.lighthouselabs.ca", userID: "userRandomID" },
-  "9sm5xK": { longURL: "http://www.google.com", userID: "userRandomID2" }
-};
+const urlDatabase = { }
 
 //users information is added here. Ids are random.
-const users = { 
-  "userRandomID": {
-    id: "userRandomID", 
-    email: "user@example.com", 
-    password: "1234"
-  },
- "user2RandomID": {
-    id: "user2RandomID", 
-    email: "user2@example.com", 
-    password: "1234"
-  }
-}
+const users = { }
 
-
-
-
-const { emailLooker } = require("./helpers.js");
-
-const { generateRandomString } = require("./helpers.js");
-
-
-const httpify = function(link) {
-  let output = link;
-  if (output.substring(0, 4) === "www.") {
-    output = "http://" + link;
-  }
-  if (output.substring(0, 11) !== "http://www." && output.substring(0, 12) !== "https://www.") {
-    output = "http://www." + link;
-  }
-  return output;
-};
-
+const { emailLooker ,generateRandomString} = require("./helpers.js");
 
 
 //this function returns an object that contains URLs by userID
 const userURLs = function (userID) {
   let final = {};
   for (let key in urlDatabase) {
-    console.log("keys", key);
-    console.log("userID", userID);
     if (userID === urlDatabase[key].userID) {
       final[key] = urlDatabase[key];
     }
   }
-  console.log("final for userURLS", final);
   return final;
 }
+
+
+//on the get route for /urls, if the user is logged in (through cookies), we render urls_index.
+//otherwise, we redirect them to the login page.
+app.get("/urls", (req, res) => {
+  const cookie = req.session.userID
+  if (cookie) {
+    const templateVars = {
+      urls: userURLs(cookie),
+      username: req.session["username"],
+      user: users[req.session["userID"]]
+    };
+    res.render("urls_index", templateVars);
+  } else {
+    res.send("Please login to see url");
+  }
+});
+
+//urls on the urls_new template in views. Otherwise, we redirect them to the login page.
+app.get("/urls/new", (req, res) => {
+  const cookie = req.session.userID
+  if (cookie) {
+    const templateVars = {
+      urls: urlDatabase,
+      username: req.session["username"],
+      user: users[req.session["userID"]]
+    };
+    res.render("urls_new", templateVars);
+    return;
+  }
+  res.redirect("/login")
+});
+
+
+app.get("/register", (req, res) => {
+  const templateVars = { 
+    user: users[req.session.userId] 
+  }
+  if (req.session.userId) {
+    res.redirect("/urls"); // when a user already logged-in, the register page does not appear
+  } else {
+    res.render("urls_register", templateVars);
+  }
+  
+});
+
+
+app.get("/login", (req, res) => {
+  const templateVars = { 
+    user: users[req.session.userId] 
+  }
+  if (req.session.userId) {
+    res.redirect("/urls"); // when a user already logged-in, the login page does not appear
+  } else {
+    res.render("urls_login", templateVars);
+  }
+  
+});
+
+//if you are logged in, you will see your own short url page. 
+
+app.get('/urls/:shortURL', (req, res) => {
+if (urlDatabase[req.params.shortURL]) {
+
+  const templateVars = {
+    shortURL: req.params.shortURL,
+    longURL: urlDatabase[req.params.shortURL].longURL,
+    user: users[req.session.userId],
+    date: urlDatabase[req.params.shortURL].dateCreated,
+    wrongUser: function() {
+      let output = false;
+      if (!userURLs(req.session.userId, urlDatabase)[req.params.shortURL]) {
+        output = true;
+      }
+      return output;
+    }
+  };
+
+  res.render("urls_show", templateVars);
+
+} else {
+  res.status(404).send(`Error 404 - ${req.params.shortURL} not found.`);
+}
+
+});
+
+
+
+
+
+
+//at shortURL, if logged in, it will redirects to longURL when clicked on shortURL
+app.get("/u/:shortURL", (req, res) => {
+  const longURL = urlDatabase[req.params.shortURL]["longURL"]
+  if (longURL) {
+    res.redirect(longURL);
+  } else {
+    res.redirect('https://http.cat/404');
+  }
+});
+
+
+
+//we will render the registration page at root
+app.get("/", (req, res) => {
+  if (users[req.session.userId]) {
+    res.redirect("/urls");
+  }
+
+  res.redirect("/login");
+});
+
+
+app.get("/urls.json", (req, res) => {
+  res.json(urlDatabase);
+});
+
+app.get("/hello", (req, res) => {
+  res.send("<html><body>Hello <b>World</b></body></html>\n");
+});
 
 
 //when on login, we check if user email and password match what's in our database (passwords are hashed),
@@ -110,101 +195,7 @@ app.post("/register", (req, res) => {
   }
 });
 
-//on the get route for /urls, if the user is logged in (through cookies), we render urls_index.
-//otherwise, we redirect them to the login page.
-app.get("/urls", (req, res) => {
-  const cookie = req.session.userID
-  if (cookie) {
-    const templateVars = {
-      urls: userURLs(cookie),
-      username: req.session["username"],
-      user: users[req.session["userID"]]
-    };
-    console.log(templateVars);
-    res.render("urls_index", templateVars);
-  } else {
-    res.redirect("/login");
-  }
-});
 
-//urls on the urls_new template in views. Otherwise, we redirect them to the login page.
-app.get("/urls/new", (req, res) => {
-  const cookie = req.session.userID
-  if (cookie) {
-    const templateVars = {
-      urls: urlDatabase,
-      username: req.session["username"],
-      user: users[req.session["userID"]]
-    };
-    res.render("urls_new", templateVars);
-    return;
-  }
-  res.redirect("/login")
-});
-
-//when we visit the registration page, we will go to html for the page
-app.get("/register", (req, res) => {
-  const templateVars = {
-    username: null,
-    user: null
-  }
-  res.render("urls_register", templateVars);
-});
-
-
-app.get("/login", (req, res) => {
-  const templateVars = {
-    username: null,
-    user: null
-  }
-  res.render("urls_login", templateVars);
-})
-
-
-//if you are logged in, you will see your own short url page. 
-app.get("/urls/:shortURL", (req, res) => {
-  const userID = req.session["userID"];
-  if (!userID) {
-    res.redirect('/login');
-    return;
-  }
-  const templateVars = {
-    shortURL: req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL].longURL,
-    user: users[req.session["userID"]]
-  };
-  res.render("urls_show", templateVars);
-});
-
-//at shortURL, if logged in, it will redirects to longURL when clicked on shortURL
-app.get("/u/:shortURL", (req, res) => {
-  console.log("urldatabase", urlDatabase[req.params.shortURL])
-  const longURL = urlDatabase[req.params.shortURL]["longURL"]
-  console.log("longURL", longURL);
-  if (longURL) {
-    res.redirect(longURL);
-  } else {
-    res.redirect('https://http.cat/404');
-  }
-});
-
-
-//we will render the registration page at root
-app.get("/", (req, res) => {
-  const templateVars = {
-    username: null,
-    user: null
-  }
-  res.render("urls_registration", templateVars);
-});
-
-app.get("/urls.json", (req, res) => {
-  res.json(urlDatabase);
-});
-
-app.get("/hello", (req, res) => {
-  res.send("<html><body>Hello <b>World</b></body></html>\n");
-});
 
 //posts a users unique links to urls page.
 app.post("/urls", (req, res) => {
@@ -215,7 +206,6 @@ app.post("/urls", (req, res) => {
     return;
   }
   urlDatabase[shortURL] = { longURL: req.body.longURL, userID, };
-  console.log('the urlDatabase has been updated to now be: \n', urlDatabase);
   res.redirect(`/urls/${shortURL}`);
 });
 
@@ -224,7 +214,6 @@ app.post("/urls/:id", (req, res) => {
   if (userID === urlDatabase[req.params.id].userID) {
     urlDatabase[req.params.id] = { longURL: req.body.longURL, userID, };
   }
-  console.log('the urlDatabase has been updated to now be: \n', urlDatabase);
   res.redirect(`/urls`);       
 });
 
