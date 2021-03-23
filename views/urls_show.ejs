@@ -11,25 +11,32 @@
 <body>
 
   <%- include('partials/_header') %>
+  <% if(user && wrongUser()) { %>
+    <h2 style="text-align: center; margin-top: 2em;">Access denied - you are not the owner of this URL.</h2>
+    <% } %>
+    <% if(user && !wrongUser()) { %>
   <div class="card text-center">
     <div class="card-header"></div>
     <div class="card-body">
       <h5 class="card-title">TinyURL for: <%= longURL %></h5>
       <p class="card-text">Short URL: <a href="/u/<%= shortURL %>"><%= shortURL %></a></p>
     </div>
-
-    <form class="inline" action="/urls/<%= shortURL %>" method="POST">
-      <div>
-        <label for="updateLongURL">Update Long URL</label>
-        <input type="text" id="updateURL" name="longURL">
-        <button type="submit" class="btn btn-info">Update URL</button>
-
+    <div class="card-footer text-muted"></div>
+  </div>
+  <div class="p-3 mb-2 bg-light text-dark text-center">
+    <h2 class="text-secondary">Edit</h2>
+    <form class="form-inline justify-content-center" action="/urls/<%= shortURL %>?_method=PUT" method="POST">
+      <div class="form-group mb-2 text-center">
+        <label for="longURL" class="text-secondary">New URL:</label>
+        <input class="form-control" type="text" name="longURL" placeholder="http://" style="width: 300px; margin: 1em">
+        <button type="submit" class="btn btn-primary">Submit</button>
       </div>
     </form>
+  </div>
   
-  <div class="card-footer text-muted"></div>
-</div>
-
+  <% } else if (!user) { %>
+    <h2>Log in to edit your URLs</h2>
+    <% } %>
   <!-- Bootstrap JS -->
   <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
